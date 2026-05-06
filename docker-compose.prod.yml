@@ -1,0 +1,119 @@
+# Opha — Docker Compose (production, packaging V1)
+#
+# Cible : machine cabinet (Mac mini, Win mini-PC ou Linux mini-PC) avec
+# Docker Desktop ou Docker Engine. La stack pull les images publiées sur
+# GHCR (workflow .github/workflows/release.yml) et démarre :
+#   - postgres : data volume opha_postgres_data
+#   - backend  : Spring Boot prod, Caddy l'expose en HTTPS via /api/*
+#   - frontend : SPA buildée servie par Nginx, derrière Caddy
+#   - caddy    : reverse-proxy + HTTPS auto-signé (tls internal) sur opha.local
+#
+# Lancer :
+#   cp .env.production.example .env
+#   # éditer .env (POSTGRES_PASSWORD, OPHA_VERSION...)
+#   docker compose -f infra/docker-compose.prod.yml --env-file .env up -d
+#
+# Accéder : https://opha.local — accepter le warning Caddy au 1er accès.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: opha-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-opha}
+      POSTGRES_USER: ${POSTGRES_USER:-opha}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required in .env}
+    # Pas de port exposé sur l'host — Postgres reste interne au réseau Docker.
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    networks:
+      - opha-net
+
+  backend:
+    image: ghcr.io/martinvm72/opha-backend:${OPHA_VERSION:?OPHA_VERSION is required in .env}
+    container_name: opha-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB:-opha}
+      DB_USER: ${POSTGRES_USER:-opha}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required in .env}
+      # CORS strict : seul opha.local (servi par Caddy en HTTPS) peut taper l'API.
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://opha.local}
+      # Cookies en Secure (Caddy fait du HTTPS).
+      REMEMBER_ME_SECURE: "true"
+      REMEMBER_ME_VALIDITY_SECONDS: ${REMEMBER_ME_VALIDITY_SECONDS:-5184000}
+      # eHealth (C.3) — passphrase vide tant que pas de cert minilab installé.
+      EHEALTH_KEYSTORE_PASSPHRASE: ${EHEALTH_KEYSTORE_PASSPHRASE:-}
+      APP_EHEALTH_KEYSTORE_DIR: /var/opha/ehealth/keys
+      APP_DOCUMENTS_DIR: /var/opha/documents
+      # Version applicative remontée dans les logs et l'API /admin/system/* (P.4).
+      APP_VERSION: ${OPHA_VERSION}
+    # Pas de ports exposés sur l'host — accès via Caddy uniquement.
+    volumes:
+      - ehealth_keystore:/var/opha/ehealth/keys
+      - documents:/var/opha/documents
+      # Sentinel file partagé avec le host pour permettre au cron updater
+      # de déclencher le pull + restart (P.4). Le path est configurable
+      # via APP_UPDATE_SENTINEL_FILE côté backend.
+      - update_sentinel:/var/opha/update
+    networks:
+      - opha-net
+
+  frontend:
+    image: ghcr.io/martinvm72/opha-frontend:${OPHA_VERSION:?OPHA_VERSION is required in .env}
+    container_name: opha-frontend
+    restart: unless-stopped
+    # Pas de ports exposés sur l'host — accès via Caddy uniquement.
+    networks:
+      - opha-net
+
+  caddy:
+    image: caddy:2.8-alpine
+    container_name: opha-caddy
+    restart: unless-stopped
+    depends_on:
+      - backend
+      - frontend
+    environment:
+      OPHA_PUBLIC_HOST: ${OPHA_PUBLIC_HOST:-opha.local}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data        # certificats CA locale persistés
+      - caddy_config:/config
+    networks:
+      - opha-net
+
+volumes:
+  postgres_data:
+    name: opha_postgres_data
+  ehealth_keystore:
+    name: opha_ehealth_keystore
+  documents:
+    name: opha_documents
+  caddy_data:
+    name: opha_caddy_data
+  caddy_config:
+    name: opha_caddy_config
+  update_sentinel:
+    name: opha_update_sentinel
+
+networks:
+  opha-net:
+    name: opha-net
+    driver: bridge

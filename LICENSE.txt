@@ -1,0 +1,58 @@
+Copyright (c) 2026 Martin Van Mollekot. Tous droits réservés.
+
+================================================================================
+Licence d'évaluation Opha — version 1.0
+================================================================================
+
+Ce dépôt contient les installeurs et fichiers de configuration nécessaires
+pour déployer Opha, un logiciel de gestion de cabinet d'ophtalmologie. Les
+images Docker associées (`ghcr.io/martinvm72/opha-backend` et
+`ghcr.io/martinvm72/opha-frontend`) sont mises à disposition sous les
+conditions suivantes :
+
+1. ÉVALUATION PERSONNELLE AUTORISÉE.
+   Vous êtes autorisé à télécharger, installer et exécuter Opha sur une
+   machine personnelle ou professionnelle, à des fins :
+     a) d'évaluation du produit,
+     b) de test technique,
+     c) de démonstration interne au sein d'un cabinet médical.
+
+2. USAGE COMMERCIAL OU EN PRODUCTION SOUMIS À ACCORD ÉCRIT.
+   Toute utilisation d'Opha en environnement de production — c'est-à-dire
+   pour gérer les données de patients réels d'un cabinet médical en
+   activité — nécessite l'accord écrit préalable de l'auteur et la
+   conclusion d'un contrat de licence commerciale séparé.
+
+3. PAS DE REDISTRIBUTION.
+   Vous ne pouvez ni redistribuer ni revendre les images Docker, les
+   installeurs ou les fichiers de ce dépôt à des tiers, sous quelque
+   forme que ce soit, sans autorisation écrite préalable.
+
+4. PAS DE DÉCOMPILATION.
+   Toute tentative de décompilation, désassemblage, ingénierie inverse
+   ou extraction du code source des images Docker est interdite, sauf
+   dans la mesure expressément autorisée par la loi applicable.
+
+5. AUCUNE GARANTIE.
+   Le logiciel est fourni "tel quel", sans aucune garantie expresse ou
+   implicite, y compris mais sans s'y limiter les garanties implicites
+   de qualité marchande, d'adéquation à un usage particulier ou de
+   non-violation de droits de tiers. L'auteur ne pourra être tenu
+   responsable de tout dommage direct, indirect, accessoire ou
+   consécutif résultant de l'utilisation du logiciel.
+
+6. CODE SOURCE.
+   Le code source d'Opha n'est pas distribué publiquement. Le présent
+   dépôt ne contient que des fichiers de configuration et des scripts
+   d'installation. La détention de ces fichiers ne confère aucun droit
+   sur le code source ni sur les images binaires.
+
+================================================================================
+Contact
+================================================================================
+
+Pour toute demande de licence commerciale, démonstration en cabinet, ou
+question juridique :
+
+  Martin Van Mollekot — martinvanmollekot@gmail.com
+  https://github.com/martinvm72/Opha (privé — accès sur demande)

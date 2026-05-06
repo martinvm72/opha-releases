@@ -1,0 +1,58 @@
+# Opha — Caddyfile (production, packaging V1)
+#
+# Caddy est en façade dans la stack prod (infra/docker-compose.prod.yml).
+# Il termine HTTPS et route le trafic :
+#   - /api/*  → backend:8080  (Spring Boot)
+#   - /...    → frontend:80   (Nginx servant le build Vite)
+#
+# Hostname : opha.local — résolu en LAN via mDNS (natif macOS et Windows
+# 10 1803+, fallback hosts file pour les Windows < 10 1803). Cf. décision
+# §10.42 dans ARCHITECTURE.md.
+#
+# tls internal : Caddy génère une CA locale auto-signée et émet un cert
+# pour opha.local. Au premier accès, le navigateur affiche un avertissement
+# (la CA n'est pas connue) — l'utilisateur clique "Continuer" une fois.
+# Pour supprimer l'avertissement : importer la CA root dans le trust store
+# de chaque PC client (cf. docs/installation.md).
+#
+# Override possible via la variable d'environnement OPHA_PUBLIC_HOST
+# consommée par le service Caddy dans le compose (défaut "opha.local").
+#
+# Aucune redirection HTTP → HTTPS n'est nécessaire : Caddy le fait
+# automatiquement par défaut.
+
+{$OPHA_PUBLIC_HOST:opha.local} {
+    encode zstd gzip
+
+    # Backend : tous les chemins sous /api/* sont délégués au container
+    # backend. La requête est passée telle quelle (path préservé).
+    handle /api/* {
+        reverse_proxy backend:8080 {
+            # Préserver l'IP du client pour les logs d'audit Spring.
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    # Endpoints OpenAPI (utiles côté admin/dev, pas exposés sur internet).
+    handle /v3/api-docs* {
+        reverse_proxy backend:8080
+    }
+    handle /swagger-ui* {
+        reverse_proxy backend:8080
+    }
+
+    # Tout le reste : SPA frontend.
+    handle {
+        reverse_proxy frontend:80
+    }
+
+    # CA locale auto-signée — pas de Let's Encrypt en V1.
+    tls internal
+
+    log {
+        output stdout
+        format console
+    }
+}
